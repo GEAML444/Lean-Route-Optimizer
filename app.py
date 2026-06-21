@@ -16,7 +16,7 @@ with st.expander("Instructions (click to expand)"):
 
     st.write("Example:")
     st.code("""Ct,Df,1033.783
-Df,D,516.8913
+Df,D,516.8912
 D,C1,581.5027""")
 
     st.write("- Each line represents a connection (edge)")
