@@ -60,9 +60,7 @@ uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 edges = []
 input_type = st.radio("Input type", ["Distance (inches)", "Time (seconds)"])
 
-speed = None
-if input_type == "Distance (inches)":
-    speed = st.number_input("Walking speed (inches/sec)", value=55.0)
+speed = st.number_input("Speed (inches/sec)", value=55.0)
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 
@@ -101,10 +99,11 @@ D,X,415.35""")
 # Build graph
 G = nx.Graph()
 
+# Build graph
+G = nx.Graph()
 for a, b, d in edges:
     G.add_edge(a, b, weight=d)
-    a,b,d = line.split(",")
-    G.add_edge(a.strip(), b.strip(), weight=float(d))
+
 mod_input = st.text_area("Obstacles / Modifiers", "")
 
 for line in mod_input.strip().split("\n"):
@@ -136,17 +135,15 @@ return_to_start = st.checkbox("Return to start (make it a loop)", value=False)
 
 # Distance matrix
 dist = dict(nx.all_pairs_dijkstra_path_length(G, weight="weight"))
-df_dist = pd.DataFrame(dist).T[nodes]
+df_base = pd.DataFrame(dist).T[nodes]
 
 if input_type == "Distance (inches)":
-    df_time = df_dist / speed
+    df_dist = df_base
+    df_time = df_base / speed
 else:
-    df_time = df_dist.copy()  # already time
-# Time matrix
-if input_type == "Distance (inches)":
-    df_time = df_dist / speed
-else:
-    df_time = df_dist.copy()
+    df_time = df_base
+    df_dist = df_base * speed
+
 st.subheader("Distance Matrix (inches)")
 st.dataframe(df_dist.round(2))
 csv_dist = df_dist.to_csv().encode('utf-8')
