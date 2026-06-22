@@ -16,7 +16,7 @@ with st.expander("Instructions (click to expand)"):
 
     st.write("Example:")
     st.code("""Ct,Df,1033.783
-Df,D,516.8914
+Df,D,516.8913
 D,C1,581.5027""")
 
     st.write("- Each line represents a connection (edge)")
@@ -125,6 +125,9 @@ for line in mod_input.strip().split("\n"):
             if G.has_edge(a, b):
                 G[a][b]["weight"] += penalty
 nodes = list(G.nodes())
+skip_nodes = st.multiselect("Skip nodes", nodes)
+
+active_nodes = [n for n in nodes if n not in skip_nodes]
 if len(nodes) > 10:
     st.warning("More than 10 nodes may be very slow. Consider simplifying.")
 start_node = st.selectbox("Start node (optional)", ["None"] + nodes)
@@ -182,7 +185,7 @@ def path_length(path):
 best_path = None
 best_len = float("inf")
 
-for perm in itertools.permutations(nodes):
+for perm in itertools.permutations(active_nodes):
 
     # Enforce start node
     if start_node != "None" and perm[0] != start_node:
@@ -287,6 +290,6 @@ nx.draw_networkx_nodes(
 )
 
 edge_labels = nx.get_edge_attributes(G, 'weight')
-nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=7)
+# nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=7)
 
 st.pyplot(plt)
