@@ -4,54 +4,126 @@ import pandas as pd
 import itertools
 import matplotlib.pyplot as plt
 
+instructions_text = """
+Route Optimization Tool - Instructions
+
+Overview:
+This tool calculates optimal routes between locations using distance or time.
+
+Input Format:
+NodeA,NodeB,Value
+
+Example:
+Ct,Df,1033.783
+Df,D,516.8913
+
+Input Type:
+- Distance mode: values are distances
+- Time mode: values are travel times
+- Speed is used to convert between them
+
+Units:
+- Units can be changed for display (feet, meters, minutes)
+- Internal calculations use base units
+
+Obstacles / Modifiers:
+D,X,block
+C1,C2,penalty,200
+
+- block removes a connection
+- penalty adds cost
+
+Constraints:
+- Start/End nodes fix route endpoints
+- Return to start creates a loop
+- Skip nodes removes locations
+
+Matrices:
+- Input Matrix = direct connections
+- Distance Matrix = shortest paths (distance)
+- Time Matrix = shortest paths (time)
+
+Notes:
+- Constant speed → same optimal path for distance and time
+- Do not mix units in input
+- >10 nodes may slow performance
+"""
 st.title("Route Optimization Tool")
 with st.expander("Instructions (click to expand)"):
 
     st.write("### Overview")
-    st.write("This tool finds the shortest route connecting all nodes based on your inputs.")
+    st.write(
+        "This tool calculates optimal routes between locations based on your inputs. "
+        "It supports distance- or time-based modeling, constraints, and scenario testing."
+    )
 
-    st.write("### Input: Edges")
-    st.write("Define connections between nodes using the format:")
-    st.code("NodeA,NodeB,Distance_or_Time")
+    st.write("### Step 1: Define Connections (Edges)")
+    st.write("Enter connections between nodes using the format:")
+    st.code("NodeA,NodeB,Value")
 
     st.write("Example:")
     st.code("""Ct,Df,1033.783
 Df,D,516.8913
 D,C1,581.5027""")
 
-    st.write("- Each line represents a connection (edge)")
-    st.write("- Nodes are automatically created from your entries")
-    st.write("- Values must be numbers (distance in inches OR time in seconds)")
+    st.write(
+        "- Each row defines a direct path between two locations\n"
+        "- Values represent either distance or time depending on selected mode\n"
+        "- Nodes are created automatically"
+    )
 
-    st.write("### CSV Upload Format")
-    st.write("Upload a CSV with columns in this order:")
-    st.code("NodeA,NodeB,Distance_or_Time")
+    st.write("### Step 2: Choose Input Type")
+    st.write(
+        "- Distance mode: values are interpreted as physical distance\n"
+        "- Time mode: values are interpreted as travel time\n"
+        "- The tool converts between distance and time using the selected speed"
+    )
 
-    st.write("Example CSV:")
-    st.code("""NodeA,NodeB,Distance
-Ct,Df,1033.783
-Df,D,516.8913""")
+    st.write("### Step 3: Units")
+    st.write(
+        "- You can select preferred units for display (e.g., feet, meters, minutes)\n"
+        "- Internally, calculations use base units for consistency\n"
+        "- Unit selection does not change routing results, only how they are displayed"
+    )
 
-    st.write("### Obstacles / Modifiers")
-    st.write("Optional input to block or penalize edges:")
-
+    st.write("### Step 4: Obstacles / Modifiers")
+    st.write("Simulate blocked paths or delays:")
     st.code("""D,X,block
 C1,C2,penalty,200""")
 
-    st.write("- block → removes the connection")
-    st.write("- penalty → adds extra distance/time")
+    st.write(
+        "- block → removes a connection entirely\n"
+        "- penalty → adds extra cost (distance or time)"
+    )
 
-    st.write("### Input Type")
-    st.write("- Distance mode: values are inches → converted to time using speed")
-    st.write("- Time mode: values are already time (seconds)")
+    st.write("### Step 5: Constraints")
+    st.write(
+        "- Start/End nodes restrict where the route begins and ends\n"
+        "- 'Return to start' creates a loop\n"
+        "- Skip nodes removes locations from the route"
+    )
 
-    st.write("### Constraints")
-    st.write("- Start/End nodes restrict where the route begins/ends")
-    st.write("- 'Return to start' creates a loop")
+    st.write("### What the Matrices Show")
+    st.write(
+        "- Input Matrix: direct connections you entered\n"
+        "- Distance Matrix: shortest distances between all nodes\n"
+        "- Time Matrix: shortest travel times between all nodes\n"
+        "- These are optimized paths, not just direct edges"
+    )
 
-    st.write("### Notes")
-    st.write("- Do not mix distance and time in the same input")
-    st.write("- More than ~10 nodes may be slow")
+    st.write("### Important Notes")
+    st.write(
+        "- With constant speed, shortest distance and shortest time produce the same route\n"
+        "- Do not mix distance and time values in the same input\n"
+        "- Large numbers of nodes (>10) may slow performance"
+    )
+
+st.download_button(
+    label="Download Instructions",
+    data=instructions_text,
+    file_name="route_tool_instructions.txt",
+    mime="text/plain"
+)
 
 st.write("Input format: NodeA, NodeB, Distance (in inches)")
 
@@ -94,7 +166,8 @@ D,X,415.35""")
         except:
             st.warning(f"Could not parse line: {line}")
 
-
+unit = st.selectbox("Distance unit", ["inches", "feet", "meters"])
+time_unit = st.selectbox("Time unit", ["seconds", "minutes"])
 
 # Build graph
 G = nx.Graph()
@@ -238,7 +311,8 @@ st.subheader("Route Visualization")
 
 # Create layout (spring layout = decent automatic positioning)
 # Fixed layout (approximate physical circuit)
-pos = {
+# Use fixed layout if known, otherwise auto-layout
+default_pos = {
     "Ct": (0, 1),
     "Df": (1, 1),
     "D": (2, 1),
@@ -247,13 +321,19 @@ pos = {
     "X": (2, 0),
     "F": (1, 0),
 }
+
+if all(node in default_pos for node in G.nodes()):
+    pos = default_pos
+else:
+    pos = nx.spring_layout(G, seed=42)
 # Handle any unexpected nodes
 for node in G.nodes():
     if node not in pos:
         pos[node] = (0, 0)
 
 plt.figure(figsize=(6,4))
-
+plt.clf()
+pos = nx.spring_layout(G, seed=42, k=1.5)
 # Draw full graph (light gray)
 nx.draw(G, pos, with_labels=True, node_color="lightgray",
         edge_color="lightgray", node_size=800, font_size=8)
